@@ -20,19 +20,21 @@ import logging
 from hidapi_backend import HidApiUSB
 from pyusb_backend import PyUSB
 from pywinusb_backend import PyWinUSB
+from ws_backend import WebSocketInterface
 
 INTERFACE = {
              'hidapiusb': HidApiUSB,
              'pyusb': PyUSB,
-             'pywinusb': PyWinUSB
+             'pywinusb': PyWinUSB,
+             'ws': WebSocketInterface
             }
 
 # Allow user to override backend with an environment variable.
-usb_backend = os.getenv('PYOCD_USB_BACKEND', "")
+usb_backend = os.getenv('PYDAPACCESS_USB_BACKEND', "")
 
 # Check validity of backend env var.
 if usb_backend and ((usb_backend not in INTERFACE.keys()) or (not INTERFACE[usb_backend].isAvailable)):
-    logging.error("Invalid USB backend specified in PYOCD_USB_BACKEND: " + usb_backend)
+    logging.error("Invalid USB backend specified in PYDAPACCESS_USB_BACKEND: " + usb_backend)
     usb_backend = ""
 
 # Select backend based on OS and availability.

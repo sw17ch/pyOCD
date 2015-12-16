@@ -16,13 +16,11 @@
 """
 from __future__ import absolute_import
 
-import logging
 import time
 import collections
 import six
 from .dap_access_api import DAPAccessIntf
 from .cmsis_dap_core import CMSIS_DAP_Protocol
-from .interface import INTERFACE, usb_backend
 from .cmsis_dap_core import (COMMAND_ID, DAP_TRANSFER_OK,
                              DAP_TRANSFER_FAULT, DAP_TRANSFER_WAIT)
 
@@ -33,24 +31,6 @@ READ = 1 << 1
 WRITE = 0 << 1
 VALUE_MATCH = 1 << 4
 MATCH_MASK = 1 << 5
-
-MBED_VID = 0x0d28
-MBED_PID = 0x0204
-
-
-def _get_interfaces():
-    """Get the commected USB devices"""
-    return INTERFACE[usb_backend].getAllConnectedInterface(MBED_VID, MBED_PID)
-
-
-def _get_unique_id(interface):
-    """Get the unique id from an interface"""
-    interface.write([0x80])
-    raw_id = bytearray(interface.read())
-    id_start = 2
-    id_size = raw_id[1]
-    unique_id = str(raw_id[id_start:id_start + id_size])
-    return unique_id
 
 
 class _Transfer(object):
@@ -338,7 +318,7 @@ class _Command(object):
         return data
 
 
-class DAPAccessUSB(DAPAccessIntf):
+class DAPAccessCMSISDAP(DAPAccessIntf):
     """
     An implementation of the DAPAccessIntf layer for DAPLINK boards
     """
@@ -351,36 +331,23 @@ class DAPAccessUSB(DAPAccessIntf):
         """
         Return an array of all mbed boards connected
         """
-        all_daplinks = []
-        all_interfaces = _get_interfaces()
-        for interface in all_interfaces:
-            try:
-                unique_id = _get_unique_id(interface)
-                new_daplink = DAPAccessUSB(unique_id)
-                all_daplinks.append(new_daplink)
-            except DAPAccessIntf.TransferError:
-                logger = logging.getLogger(__name__)
-                logger.error('Failed to get unique id', exc_info=True)
-            finally:
-                interface.close()
-        return all_daplinks
+        raise NotImplementedError()
 
     @staticmethod
     def get_device(device_id):
-        assert isinstance(device_id, str)
-        return DAPAccessUSB(device_id)
+        raise NotImplementedError()
 
     # ------------------------------------------- #
     #          CMSIS-DAP and Other Functions
     # ------------------------------------------- #
-    def __init__(self, unique_id):
-        assert isinstance(unique_id, six.string_types)
-        super(DAPAccessUSB, self).__init__()
-        self._interface = None
+    def __init__(self, interface):
+        super(DAPAccessCMSISDAP, self).__init__()
+        self._interface = interface
+        self._interface_open = False
         self._deferred_transfer = False
         self._protocol = None  # TODO, c1728p9 remove when no longer needed
         self._packet_count = None
-        self._unique_id = unique_id
+        self._unique_id = self._interface.getUniqueId()
         self._frequency = 1000000  # 1MHz default clock
         self._dap_port = None
         self._transfer_list = None
@@ -391,36 +358,20 @@ class DAPAccessUSB(DAPAccessIntf):
         return
 
     def open(self):
-        assert self._interface is None
-        all_interfaces = _get_interfaces()
-        for interface in all_interfaces:
-            try:
-                unique_id = _get_unique_id(interface)
-                if self._unique_id == unique_id:
-                    # This assert could indicate that two boards
-                    # had the same ID
-                    assert self._interface is None
-                    self._interface = interface
-            except Exception:
-                logger = logging.getLogger(__name__)
-                logger.error('Failed to get unique id for open', exc_info=True)
-            finally:
-                # Close all but the current interface
-                if self._interface is not interface:
-                    interface.close()
-        assert self._interface is not None, "Could not open daplink, not found"
-
+        assert self._interface_open is False
+        self._interface.open()
         self._protocol = CMSIS_DAP_Protocol(self._interface)
         self._packet_count = self._protocol.dapInfo("PACKET_COUNT")
         self._interface.setPacketCount(self._packet_count)
         self._packet_size = 64
-
         self._init_deferred_buffers()
+        self._interface_open = True
 
     def close(self):
-        assert self._interface is not None
+        assert self._interface_open is True
         self.flush()
         self._interface.close()
+        self._interface_open = False
 
     def get_unique_id(self):
         return self._unique_id

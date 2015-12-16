@@ -21,6 +21,7 @@ import logging, array
 from time import sleep
 from board import Board
 from pyOCD.pyDAPAccess import DAPAccess
+from pyOCD.pyDAPAccess import DAPAccessSocket
 
 class BoardInfo(object):
     def __init__(self, name, target, binary):
@@ -137,6 +138,21 @@ class MbedBoard(Board):
             print("No available boards are connected")
 
     @staticmethod
+    def listConnectedBoardsWS(host,port,dap_class=DAPAccessSocket):
+        """
+        List the connected board info
+        """
+        all_mbeds = MbedBoard.getAllConnectedBoardsWS(host,port,dap_class, close=True,
+                                                    blocking=False)
+        index = 0
+        if len(all_mbeds) > 0:
+            for mbed in all_mbeds:
+                print("%d => %s boardId => %s" % (index, mbed.getInfo().encode('ascii', 'ignore'), mbed.unique_id))
+                index += 1
+        else:
+            print("No available boards are connected")
+
+    @staticmethod
     def getAllConnectedBoards(dap_class=DAPAccess, close=False, blocking=True,
                               target_override=None, frequency=1000000):
         """
@@ -167,6 +183,36 @@ class MbedBoard(Board):
         return mbed_list
 
     @staticmethod
+    def getAllConnectedBoardsWS(host,port,dap_class=DAPAccessSocket,close=False, blocking=True,
+                              target_override=None, frequency=1000000):
+        """
+        Return an array of all mbed boards connected
+        """
+
+        mbed_list = []
+        while True:
+
+            connected_daps = dap_class.get_connected_devices(host,port)
+            for dap_access in connected_daps:
+                new_mbed = MbedBoard(dap_access, target_override, frequency)
+                mbed_list.append(new_mbed)
+
+            #TODO - handle exception on open
+            if not close:
+                for dap_access in connected_daps:
+                    dap_access.open()
+
+            if not blocking:
+                break
+            elif len(mbed_list) > 0:
+                break
+            else:
+                sleep(0.01)
+            assert len(mbed_list) == 0
+
+        return mbed_list
+
+    @staticmethod
     def chooseBoard(dap_class=DAPAccess, blocking=True, return_first=False,
                     board_id=None, target_override=None, frequency=1000000,
                     init_board=True):
@@ -174,6 +220,81 @@ class MbedBoard(Board):
         Allow you to select a board among all boards connected
         """
         all_mbeds = MbedBoard.getAllConnectedBoards(dap_class, False, blocking,
+                                                    target_override, frequency)
+
+        # If a board ID is specified close all other boards
+        if board_id != None:
+            new_mbed_list = []
+            for mbed in all_mbeds:
+                if mbed.unique_id == (board_id):
+                    new_mbed_list.append(mbed)
+                else:
+                    mbed.link.close()
+            assert len(new_mbed_list) <= 1
+            all_mbeds = new_mbed_list
+
+        # Return if no boards are connected
+        if all_mbeds == None or len(all_mbeds) <= 0:
+            if board_id is None:
+                print("No connected boards")
+            else:
+                print("Board %s is not connected" % board_id)
+            return None # No boards to close so it is safe to return
+
+        # Select first board and close others if True
+        if return_first:
+            for i in range(1, len(all_mbeds)):
+                all_mbeds[i].link.close()
+            all_mbeds = all_mbeds[0:1]
+
+        # Ask use to select boards if there is more than 1 left
+        if len(all_mbeds) > 1:
+            index = 0
+            print "id => usbinfo | boardname"
+            for mbed in all_mbeds:
+                print "%d => %s" % (index, mbed.getInfo().encode('ascii', 'ignore'))
+                index += 1
+            while True:
+                print "input id num to choice your board want to connect"
+                line = sys.stdin.readline()
+                valid = False
+                try:
+                    ch = int(line)
+                    valid = 0 <= ch < len(all_mbeds)
+                except ValueError:
+                    pass
+                if not valid:
+                    logging.info("BAD CHOICE: %s", line)
+                    index = 0
+                    for mbed in all_mbeds:
+                        print "%d => %s" % (index, mbed.getInfo())
+                        index += 1
+                else:
+                    break
+            # close all others mbed connected
+            for mbed in all_mbeds:
+                if mbed != all_mbeds[ch]:
+                    mbed.link.close()
+            all_mbeds = all_mbeds[ch:ch + 1]
+
+        assert len(all_mbeds) == 1
+        mbed = all_mbeds[0]
+        if init_board:
+            try:
+                mbed.init()
+            except:
+                mbed.link.close()
+                raise
+        return mbed
+
+    @staticmethod
+    def chooseBoardWS(host,port,dap_class=DAPAccessSocket, blocking=True, return_first=False,
+                    board_id=None, target_override=None, frequency=1000000,
+                    init_board=True):
+        """
+        Allow you to select a board among all boards connected
+        """
+        all_mbeds = MbedBoard.getAllConnectedBoardsWS(host,port,dap_class, False, blocking,
                                                     target_override, frequency)
 
         # If a board ID is specified close all other boards

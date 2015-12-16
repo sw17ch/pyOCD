@@ -18,6 +18,14 @@
 
 class Interface(object):
 
+    @staticmethod
+    def getInterface(device_id):
+        return
+
+    @staticmethod
+    def getAllConnectedInterface():
+        return
+
     def __init__(self):
         self.vid = 0
         self.pid = 0
@@ -45,8 +53,14 @@ class Interface(object):
         # Unless overridden the packet count cannot be changed
         return
 
+    def getUniqueId(self):
+        return
+
     def getPacketCount(self):
         return self.packet_count
+
+    def open(self):
+        return
 
     def close(self):
         return

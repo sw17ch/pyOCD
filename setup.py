@@ -59,6 +59,8 @@ setup(
             'pyocd-gdbserver = pyOCD.tools.gdb_server:main',
             'pyocd-flashtool = pyOCD.tools.flash_tool:main',
             'pyocd-tool = pyOCD.tools.pyocd:main',
+            'pyocd-gdbserver-websocket = pyOCD.tools.gdb_server_websocket:main',
+            'pyocd-flashtool-websocket = pyOCD.tools.flash_tool_websocket:main',
         ],
     },
     use_2to3=True,

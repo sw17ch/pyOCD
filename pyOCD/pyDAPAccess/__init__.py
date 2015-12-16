@@ -15,7 +15,10 @@
  limitations under the License.
 """
 from .dap_access_api import DAPAccessIntf
-from .dap_access_usb import DAPAccessUSB
+from .dap_access_cd_usb import DAPAccessUSB
+from .dap_access_cd_ws import DAPAccessWS
 
 # alias DAPAccessUSB as main DAPAccess class
+
 DAPAccess = DAPAccessUSB
+DAPAccessSocket = DAPAccessWS
