@@ -38,9 +38,9 @@ MBED_VID = 0x0d28
 MBED_PID = 0x0204
 
 
-def _get_interfaces():
+def _get_interfaces(vid, pid):
     """Get the commected USB devices"""
-    return INTERFACE[usb_backend].getAllConnectedInterface(MBED_VID, MBED_PID)
+    return INTERFACE[usb_backend].getAllConnectedInterface(vid, pid)
 
 
 def _get_unique_id(interface):
@@ -347,12 +347,12 @@ class DAPAccessUSB(DAPAccessIntf):
     #          Static Functions
     # ------------------------------------------- #
     @staticmethod
-    def get_connected_devices():
+    def get_connected_devices(vid, pid):
         """
         Return an array of all mbed boards connected
         """
         all_daplinks = []
-        all_interfaces = _get_interfaces()
+        all_interfaces = _get_interfaces(vid, pid)
         for interface in all_interfaces:
             try:
                 unique_id = _get_unique_id(interface)
@@ -390,9 +390,9 @@ class DAPAccessUSB(DAPAccessIntf):
         self._command_response_buf = None
         return
 
-    def open(self):
+    def open(self, vid, pid):
         assert self._interface is None
-        all_interfaces = _get_interfaces()
+        all_interfaces = _get_interfaces(vid, pid)
         for interface in all_interfaces:
             try:
                 unique_id = _get_unique_id(interface)

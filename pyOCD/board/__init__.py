@@ -17,3 +17,4 @@
 
 import mbed_board
 from mbed_board import MbedBoard
+from ibdap_board import IBDAPBoard
