@@ -464,6 +464,10 @@ class GDBServer(threading.Thread):
             elif msg[1] == 'Z' or msg[1] == 'z':
                 return self.breakpoint(msg[1:]), 0
 
+            elif msg[1] == '!':
+                logging.error("Extended mode is not supported! (%s)", msg)
+                return self.createRSPPacket(""), 0
+
             else:
                 logging.error("Unknown RSP packet: %s", msg)
                 return self.createRSPPacket(""), 0
@@ -972,7 +976,7 @@ class GDBServer(threading.Thread):
                     # if the first command was a 'help', we only need
                     # to return info about the first cmd after it
                     resp = hexEncode(safecmd[cmd_sub][0]+'\n')
-                    return self.createRSPPacket(resp)                    
+                    return self.createRSPPacket(resp)
                 resultMask |= safecmd[cmd_sub][1]
 
             # Run cmds in proper order
@@ -982,7 +986,7 @@ class GDBServer(threading.Thread):
                 self.target.resetStopOnReset()
             elif resultMask & 0x2:
                 # on 'reset' still do a reset halt
-                self.target.resetStopOnReset()                
+                self.target.resetStopOnReset()
                 # self.target.reset()
             elif resultMask & 0x4:
                 self.target.halt()
@@ -1083,4 +1087,3 @@ class GDBServer(threading.Thread):
                 break
 
         return -1, 0
-
