@@ -214,7 +214,6 @@ class GDBServerTool(object):
             self.list_targets()
         else:
             try:
-                print(self.args.target_override)
                 ibdap_board = IBDAPBoard.useTarget(
                     target_override=self.args.target_override,
                     frequency=self.args.frequency)
